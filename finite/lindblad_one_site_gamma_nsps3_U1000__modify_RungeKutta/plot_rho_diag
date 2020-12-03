@@ -1,0 +1,3 @@
+#p "< sed 's/## rho1_proj_site_diag//g' dat" u 1:2, "" u 1:3, "" u 1:4, "" u 1:5, "" u 1:6, "" u 1:7, "" u 1:8, "" u 1:9, "" u 1:10, "" u 1:11, "" u 1:12
+p "< sed 's/## rho1_proj_site_diag//g' dat" u 1:2, "" u 1:3, "" u 1:4
+pause -1

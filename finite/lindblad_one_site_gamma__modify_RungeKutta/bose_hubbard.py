@@ -25,10 +25,14 @@ def make_list_parameters(J,U,mu,phi,L):
     return list_J, list_U, list_mu, list_phi
 
 def make_list_ham(op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_phi):
-    return [- J*((phip+phim).conj()*op_a + (phip+phim)*op_adag)
+#    return [- J*((phip+phim).conj()*op_a + (phip+phim)*op_adag)
+#        + 0.5*U*op_n2 - (0.5*U+mu)*op_n \
+#        for J,U,mu,phip,phim \
+#        in zip(list_J,list_U,list_mu,np.roll(list_phi,-1),np.roll(list_phi,1))]
+    return np.array([- J*((phip+phim).conj()*op_a + (phip+phim)*op_adag)
         + 0.5*U*op_n2 - (0.5*U+mu)*op_n \
         for J,U,mu,phip,phim \
-        in zip(list_J,list_U,list_mu,np.roll(list_phi,-1),np.roll(list_phi,1))]
+        in zip(list_J,list_U,list_mu,np.roll(list_phi,-1),np.roll(list_phi,1))])
 
 def _eigh_GS(H):
     ene, vec = scipy.linalg.eigh(H)
@@ -77,12 +81,33 @@ def calc_list_drhodt(list_gamma,op_n,op_n2,list_ham,list_rho,L):
         - 2.0 * op_n.dot(list_rho[i].dot(op_n)))\
         for i in range(L)])
 
+def calc_list_drhodt2(list_gamma,\
+    op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,\
+    list_rho,L):
+    list_phi = np.array([np.trace(list_rho[i].dot(op_a)) for i in range(L)])
+    list_ham = make_list_ham(op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_phi)
+    return np.array([\
+        - 1j * (list_ham[i].dot(list_rho[i]) - list_rho[i].dot(list_ham[i])) \
+        - 0.5 * list_gamma[i] * (op_n2.dot(list_rho[i]) + list_rho[i].dot(op_n2) \
+        - 2.0 * op_n.dot(list_rho[i].dot(op_n)))\
+        for i in range(L)])
+
 # fourth order Runge-Kutta
 def calc_RK(dt,list_gamma,op_n,op_n2,list_ham,list_rho,L):
     k1 = dt * calc_list_drhodt(list_gamma,op_n,op_n2,list_ham,list_rho,L)
     k2 = dt * calc_list_drhodt(list_gamma,op_n,op_n2,list_ham,list_rho+0.5*k1,L)
     k3 = dt * calc_list_drhodt(list_gamma,op_n,op_n2,list_ham,list_rho+0.5*k2,L)
     k4 = dt * calc_list_drhodt(list_gamma,op_n,op_n2,list_ham,list_rho+k3,L)
+    return list_rho + (k1+2*k2+2*k3+k4)/6.0
+
+# fourth order Runge-Kutta
+def calc_RK2(dt,list_gamma,\
+    op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,\
+    list_rho,L):
+    k1 = dt * calc_list_drhodt2(list_gamma,op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_rho,L)
+    k2 = dt * calc_list_drhodt2(list_gamma,op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_rho+0.5*k1,L)
+    k3 = dt * calc_list_drhodt2(list_gamma,op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_rho+0.5*k2,L)
+    k4 = dt * calc_list_drhodt2(list_gamma,op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_rho+k3,L)
     return list_rho + (k1+2*k2+2*k3+k4)/6.0
 
 
@@ -136,13 +161,13 @@ def main():
 #
     mu0 = 0.0
     list_mu0 = np.array([mu0 for i in range(L)])
-#    dt = 0.01
+    dt = 0.01
 #    dt = 0.005
-    dt = 0.001
+#    dt = 0.001
 #    Nsteps = 100000
 #    Nsteps = 10000 ## 15sec
-#    Nsteps = 100000
-    Nsteps = 1000000
+    Nsteps = 100000
+#    Nsteps = 1000000
 #    list_gamma = np.array([gamma for i in range(L)])
     list_gamma = np.zeros(L)
 #    list_gamma[L//2] = gamma
@@ -152,7 +177,8 @@ def main():
     list_rho = list_vec2list_rho(list_vec,L)
 #    for steps in range(Nsteps):
     for steps in range(Nsteps+1):
-        list_rho1 = calc_RK(dt,list_gamma,op_n,op_n2,list_ham,list_rho,L)
+#        list_rho1 = calc_RK(dt,list_gamma,op_n,op_n2,list_ham,list_rho,L)
+        list_rho1 = calc_RK2(dt,list_gamma,op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu0,list_rho,L)
         list_rho1_proj_site_diag = np.array([np.abs(list_rho1[0][i,i]) for i in range(nsps)])
         list_phi1 = np.array([np.trace(list_rho1[i].dot(op_a)) for i in range(L)])
         list_norm = np.array([np.trace(list_rho1[i]) for i in range(L)])
@@ -161,7 +187,7 @@ def main():
         list_ene = np.array([np.trace(list_rho1[i].dot(list_ham[i])) for i in range(L)])
         list_n = np.array([np.trace(list_rho1[i].dot(op_n)) for i in range(L)])
         list_rho = list_rho1
-        list_phi = list_phi1
+#        list_phi = list_phi1
         if steps%100 == 0:
 #            print(dt*steps,np.abs(np.trace(list_rho1[0])),np.abs(list_phi1[0]),np.abs(list_ene[0]))
             print("## rho1_proj_site_diag ",dt*steps," ".join(str(x) for x in np.abs(list_rho1_proj_site_diag)))

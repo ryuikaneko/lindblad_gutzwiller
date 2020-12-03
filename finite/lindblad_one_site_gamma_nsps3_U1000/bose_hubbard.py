@@ -162,11 +162,12 @@ def main():
         list_rho1_proj_site_diag = np.array([np.abs(list_rho1[0][i,i]) for i in range(nsps)])
         list_phi1 = np.array([np.trace(list_rho1[i].dot(op_a)) for i in range(L)])
         list_norm = np.array([np.trace(list_rho1[i]) for i in range(L)])
+#        list_ham = make_list_ham(op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_phi)
+        list_ham = make_list_ham(op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu0,list_phi1)
         list_ene = np.array([np.trace(list_rho1[i].dot(list_ham[i])) for i in range(L)])
         list_n = np.array([np.trace(list_rho1[i].dot(op_n)) for i in range(L)])
         list_rho = list_rho1
         list_phi = list_phi1
-        list_ham = make_list_ham(op_id,op_a,op_adag,op_n,op_n2,list_J,list_U,list_mu,list_phi)
         if steps%100 == 0:
 #            print(dt*steps,np.abs(np.trace(list_rho1[0])),np.abs(list_phi1[0]),np.abs(list_ene[0]))
             print("## rho1_proj_site_diag ",dt*steps," ".join(str(x) for x in np.abs(list_rho1_proj_site_diag)))
